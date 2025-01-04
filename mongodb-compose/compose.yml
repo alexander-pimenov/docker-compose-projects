@@ -1,0 +1,79 @@
+# x-logging: &logging
+#   driver: "k8s-file"
+#   # driver: "json-file"
+#   options:
+#     max-size: "10m"
+#     max-file: "3"
+
+# Хорошая статья по настройке mongodb compose: https://www.baeldung.com/linux/mongodb-as-docker-container
+# Код  в github: https://github.com/mfvanek/useful-sql-scripts/tree/master/running_pg_in_docker
+
+services:
+  mongo:
+    container_name: mongo
+    image: docker.io/mongo:7.0.16
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongoadmin
+      MONGO_INITDB_ROOT_PASSWORD: mongopassword
+    ports:
+      - "27017:27017"
+    logging:
+      options:
+          max-size: 1g
+    volumes:
+      - mongo-data:/data/db
+    #   - ./init_db:/docker-entrypoint-initdb.d
+    #   - postgres-data:/var/lib/postgresql/data
+      # volumes:
+    #   - type: tmpfs
+    #     target: /var/lib/postgresql/data
+    #     tmpfs:
+    #       size: 100000000
+    # logging: *logging
+    # healthcheck:
+    #   test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+    #   # test: ["CMD", "pg_isready", "-U", "postgres"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
+    #   start_period: 10s
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '1'
+    #       memory: 4G
+    networks:
+      - mongo-net  
+
+  # pgadmin:
+  #   # pgAdmin стартует на порту 5050
+  #   container_name: pgadmin_container
+  #   image: dpage/pgadmin4:7.2
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: "iamuser@myemail.com"
+  #     PGADMIN_DEFAULT_PASSWORD: "pgadmin"
+  #     PGADMIN_CONFIG_SERVER_MODE: "False"
+  #   volumes:
+  #     - pgadmin-data:/var/lib/pgadmin
+  #   ports:
+  #     - "5050:80"
+  #   restart: unless-stopped
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '0.5'
+  #         memory: 1G
+  #   networks:
+  #     - postgres
+
+volumes:
+  mongo-data:
+  # postgres-data:
+  # pgadmin-data:  
+
+networks:
+  mongo-net:
+    driver: bridge
+
+  
