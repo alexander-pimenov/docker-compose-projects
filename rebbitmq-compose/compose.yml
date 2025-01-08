@@ -1,0 +1,120 @@
+# x-logging: &logging
+#   driver: "k8s-file"
+#   # driver: "json-file"
+#   options:
+#     max-size: "10m"
+#     max-file: "3"
+
+# Хорошая статья по настройке redis compose: https://habr.com/ru/articles/823936/
+
+# Мы добавили поле hostname, которое зафиксирует имя сервера и переменные окружения с указанием логина и пароля для
+# авторизации (RABBITMQ_DEFAULT_USER и RABBITMQ_DEFAULT_PASS). После применения этих изменений авторизация под
+# guest/guest будет невозможна.
+
+# Срока restart: always — она даёт указание Docker автоматически перезагружать сервис в случае его внезапной
+# остановки (полезно для прода, хотя на моей практике Rabbit падал только при неправильном конфигурировании).
+
+# Если RabbitMQ попытается записать на диск, где нет места, это с 90% вероятностью уничтожит стейт без возможности
+# восстановления. Поэтому настоятельно рекомендую для прод инсталляций переопределять это значение на хотя бы 2 гигабита
+# (2147483648 бит). Это делается через переменную окружения RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS и поле
+# disk_free_limit
+# Конечно, пороговое значение подбирается индивидуально в зависимости от параметров сервера и характера нагрузки,
+# но для начала поставить 2 гигабита — уже в 100 раз лучше, чем значение по умолчанию 48 MB.
+
+# Добавим volume для сохранения стейта RabbitMQ локально на диск, чтобы стейт хранился на сервере, а не только внутри контейнера.
+
+# ./rebbitmqdata значит, что папка со стейтом будет находиться в том же каталоге, что и файл docker-compose.yml.
+# Это удобно при переносе окружений на другой сервер — всё в одной папке.
+
+# Также открыли наружу AMQP порт 5672 и добавили уровень логирования error — по умолчанию там info, что
+# слишком много для нагруженных систем. Отметим, что публиковать порт нужно не всегда. Если консьюмеры и паблишеры
+# находятся внутри docker-compose или подключены к его сети, в этом нет необходимости.
+
+
+services:
+  rabbitmq:
+    image: rabbitmq:latest
+    container_name: rabbitmq
+    restart: unless-stopped
+#    hostname: rabbitmq
+    ports:
+      - 15672:15672
+#      - 5672:5672
+    environment:
+      RABBITMQ_DEFAULT_USER: rmuser
+      RABBITMQ_DEFAULT_PASS: rmpassword
+#      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbit disk_free_limit 2147483648
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbit log_levels [{connection,error},{default,error}] disk_free_limit 2147483648
+    volumes:
+      # Хранение данных rabbitmq в локальной директории ./redisdata. Таким образом, ваши данные будут сохраняться в
+      # локальной папке, и вы не потеряете их, даже если контейнер Redis случайно удалится или вы потеряете к нему доступ.
+      # Главное — обеспечить сохранность данных из папки redisdata.
+      - ./rebbitmqdata:/var/lib/rabbitmq
+      # - rebbitmq-data:/data
+    networks:
+      - rabbitmq-net
+#  redis:
+#    image: redis:latest
+#    container_name: redis_container
+#    restart: unless-stopped
+#    environment:
+#      - REDIS_PASSWORD=${REDIS_PASSWORD}
+#      - REDIS_USER=${REDIS_USER}
+#      - REDIS_USER_PASSWORD=${REDIS_USER_PASSWORD}
+#    ports:
+#      - "6380:6379"
+#    volumes:
+#    # Хранение данных Redis в локальной директории ./redisdata. Таким образом, ваши данные будут сохраняться в
+#    # локальной папке, и вы не потеряете их, даже если контейнер Redis случайно удалится или вы потеряете к нему доступ.
+#    # Главное — обеспечить сохранность данных из папки redisdata.
+#      - ./redisdata:/data
+#      # - redis-data:/data
+#    deploy:
+#    #  Ограничения и резервирование ресурсов:
+#      resources:
+#        limits:
+#          cpus: '0.50'
+#          memory: 512M
+#        reservations:
+#          cpus: '0.25'
+#          memory: 256M
+## mkdir -p /usr/local/etc/redis: Эта команда создает директорию /usr/local/etc/redis, если она не существует. Флаг -p позволяет создавать вложенные директории при необходимости.
+## echo "bind 0.0.0.0" > /usr/local/etc/redis/redis.conf: Здесь мы добавляем строку "bind 0.0.0.0" в файл redis.conf. Это позволяет Redis прослушивать соединения со всех IP-адресов.
+## echo "requirepass $REDIS_PASSWORD" >> /usr/local/etc/redis/redis.conf: Эта команда добавляет строку с паролем в файл redis.conf. Пароль берется из переменной окружения $REDIS_PASSWORD.
+## echo "appendonly yes" >> /usr/local/etc/redis/redis.conf: Здесь мы включаем режим журнала (append-only mode) для сохранения данных на диск.
+## echo "appendfsync everysec" >> /usr/local/etc/redis/redis.conf: Эта строка указывает Redis выполнять синхронизацию журнала с диском каждую секунду.
+## echo "user default on nopass ~* +@all" > /usr/local/etc/redis/users.acl: Здесь мы создаем файл users.acl и добавляем правило доступа для пользователя по умолчанию. Он может подключаться без пароля и имеет доступ ко всем командам (~* +@all).
+## echo "user $REDIS_USER on >$REDIS_USER_PASSWORD ~* +@all" >> /usr/local/etc/redis/users.acl: Эта команда добавляет правило доступа для конкретного пользователя (с именем, указанным в переменной $REDIS_USER). Пользователь должен предоставить пароль из переменной $REDIS_USER_PASSWORD.
+## redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl: Здесь мы запускаем Redis-сервер с указанным файлом конфигурации и файлом ACL.
+## Это можно положить всё в конфиг и примонтировать.
+#    command: >
+#      sh -c '
+#        mkdir -p /usr/local/etc/redis &&
+#        echo "bind 0.0.0.0" > /usr/local/etc/redis/redis.conf &&
+#        echo "requirepass $REDIS_PASSWORD" >> /usr/local/etc/redis/redis.conf &&
+#        echo "appendonly yes" >> /usr/local/etc/redis/redis.conf &&
+#        echo "appendfsync everysec" >> /usr/local/etc/redis/redis.conf &&
+#        echo "user default on nopass ~* +@all" > /usr/local/etc/redis/users.acl &&
+#        echo "user $REDIS_USER on >$REDIS_USER_PASSWORD ~* +@all" >> /usr/local/etc/redis/users.acl &&
+#        redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl
+#      '
+#    healthcheck:
+#      test: ["CMD", "redis-cli", "-a", "$REDIS_PASSWORD", "ping"]
+#      interval: 30s
+#      timeout: 10s
+#      retries: 5
+#    #  Включены для интерактивного доступа:
+#    tty: true
+#    stdin_open: true
+#    networks:
+#      - redis-net
+
+volumes:
+  rabbitmq-data:
+
+  
+networks:
+  rabbitmq-net:
+    driver: bridge
+
+  
