@@ -8,6 +8,54 @@
 docker compose up -d
 ```
 
+
+Проверьте доступ к веб-консоли RabbitMQ, перейдя по адресу http://localhost:15672/ с учетными данными, которые мы задали:
+```
+RABBITMQ_DEFAULT_USER: rmuser
+RABBITMQ_DEFAULT_PASS: rmpassword
+```
+(по дефолту `guest`/`guest`).<br> 
+
+В случае проблем с доступом к веб-консоли проверьте, запущен ли плагин управления RabbitMQ (rabbitmq_management), для этого нужно 
+подключиться к работающему контейнеру RabbitMQ с помощью следующей команды:
+```bash
+docker exec -it rabbitmq bash
+```
+А затем выполнить команду:
+```bash
+rabbitmq-plugins list
+```
+
+Если флажки `[*]` во всем списке сняты, как в примере:
+```
+Listing plugins with pattern ".*" ...
+ Configured: E = explicitly enabled; e = implicitly enabled
+ | Status: * = running on rabbit@5bcbf6307bfe
+ |/
+[  ] rabbitmq_amqp1_0                  4.0.5
+[  ] rabbitmq_auth_backend_cache       4.0.5
+[  ] rabbitmq_auth_backend_http        4.0.5
+[  ] rabbitmq_auth_backend_ldap        4.0.5
+[  ] rabbitmq_auth_backend_oauth2      4.0.5
+[  ] rabbitmq_auth_mechanism_ssl       4.0.5
+[  ] rabbitmq_consistent_hash_exchange 4.0.5
+[  ] rabbitmq_event_exchange           4.0.5
+[  ] rabbitmq_federation               4.0.5
+[  ] rabbitmq_federation_management    4.0.5
+[  ] rabbitmq_federation_prometheus    4.0.5
+[  ] rabbitmq_jms_topic_exchange       4.0.5
+[  ] rabbitmq_management               4.0.5
+.....
+```
+Значит, плагин управления не запущен (обычное дело при только что установленном RabbitMQ). 
+Для активации этого плагина выполните следующую команду:
+```bash
+rabbitmq-plugins enable rabbitmq_management --online
+```
+
+Теперь можете попробовать снова. В результате вы должны увидеть веб-консоль с логином и паролем.
+
+
 ### Запуск в Docker
 
 Самый простой и быстрый способ запустить RabbitMQ:
