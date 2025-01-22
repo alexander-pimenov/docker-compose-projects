@@ -47,6 +47,9 @@ services:
 #    При запуске приложения spring boot , оно не смогло сконнектиться с Редис. Нашел решение:
 #    aws elasticache modify-user --region $REGION --user-id $USER_ID --access-string "on ~* -@all +@read +@write +cluster|nodes"
 #    но оно не помогло. Нужно еще поискать в интернете.
+#    Было так:
+#    echo "user default on nopass ~* +@all" > /usr/local/etc/redis/users.acl &&
+#    echo "user $REDIS_USER on >$REDIS_USER_PASSWORD ~* +@all" >> /usr/local/etc/redis/users.acl &&
     command: >
       sh -c '
         mkdir -p /usr/local/etc/redis &&
