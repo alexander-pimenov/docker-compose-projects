@@ -44,6 +44,9 @@ services:
 # echo "user $REDIS_USER on >$REDIS_USER_PASSWORD ~* +@all" >> /usr/local/etc/redis/users.acl: Эта команда добавляет правило доступа для конкретного пользователя (с именем, указанным в переменной $REDIS_USER). Пользователь должен предоставить пароль из переменной $REDIS_USER_PASSWORD.
 # redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl: Здесь мы запускаем Redis-сервер с указанным файлом конфигурации и файлом ACL.
 # Это можно положить всё в конфиг и примонтировать.
+#    При запуске приложения spring boot , оно не смогло сконнектиться с Редис. Нашел решение:
+#    aws elasticache modify-user --region $REGION --user-id $USER_ID --access-string "on ~* -@all +@read +@write +cluster|nodes"
+#    но оно не помогло. Нужно еще поискать в интернете.
     command: >
       sh -c '
         mkdir -p /usr/local/etc/redis &&
@@ -51,8 +54,8 @@ services:
         echo "requirepass $REDIS_PASSWORD" >> /usr/local/etc/redis/redis.conf &&
         echo "appendonly yes" >> /usr/local/etc/redis/redis.conf &&
         echo "appendfsync everysec" >> /usr/local/etc/redis/redis.conf &&
-        echo "user default on nopass ~* +@all" > /usr/local/etc/redis/users.acl &&
-        echo "user $REDIS_USER on >$REDIS_USER_PASSWORD ~* +@all" >> /usr/local/etc/redis/users.acl &&
+        echo "user default on nopass ~* +@all +@read +@write +cluster|nodes" > /usr/local/etc/redis/users.acl &&
+        echo "user $REDIS_USER on >$REDIS_USER_PASSWORD ~* +@all +@read +@write +cluster|nodes" >> /usr/local/etc/redis/users.acl &&
         redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl
       '
     healthcheck:

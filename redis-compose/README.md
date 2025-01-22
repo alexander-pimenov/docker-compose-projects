@@ -1,5 +1,17 @@
 ### [Keycloak](https://github.com/keycloak/keycloak) with [PostgreSQL](https://www.postgresql.org), which includes Keycloak's monitoring using [Prometheus](https://github.com/prometheus/prometheus) and [Grafana](https://github.com/grafana/grafana)
 
+
+## Что такое Redis и зачем он нужен
+`Redis (Remote Dictionary Server)` — это высокопроизводительная система управления базами данных типа "ключ-значение", 
+работающая в оперативной памяти. Redis часто используется для кэширования данных, управления сессиями, очередей сообщений 
+и в качестве базы данных NoSQL для быстрого доступа к данным.<br>
+Основные преимущества Redis:
+- `Скорость`: работа в памяти обеспечивает быструю обработку запросов.
+- `Простота`: простая модель данных "ключ-значение" с поддержкой сложных структур данных.
+- `Гибкость`: поддержка различных структур данных, таких как строки, списки, множества, хеши и т.д.
+- `Масштабируемость`: легкость масштабирования и поддержки репликации.
+<br>
+
 1. Requires [docker](https://docs.docker.com/get-docker/) and [compose](https://docs.docker.com/compose/install/)
 2. Parameterized using variables in the [`.env`](.env) file
 3. Up the project using command:
