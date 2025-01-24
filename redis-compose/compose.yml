@@ -5,13 +5,13 @@
 #     max-size: "10m"
 #     max-file: "3"
 
-# Хорошая статья по настройке redis compose: https://habr.com/ru/articles/823936/
+# Хорошая статья по настройке redis compose: "Быстрый запуск Redis через Docker Compose" https://habr.com/ru/articles/823936/
 
 
 services:
   redis:
     image: redis:latest
-    container_name: redis_container
+    container_name: redis
     restart: unless-stopped
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
@@ -44,12 +44,50 @@ services:
 # echo "user $REDIS_USER on >$REDIS_USER_PASSWORD ~* +@all" >> /usr/local/etc/redis/users.acl: Эта команда добавляет правило доступа для конкретного пользователя (с именем, указанным в переменной $REDIS_USER). Пользователь должен предоставить пароль из переменной $REDIS_USER_PASSWORD.
 # redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl: Здесь мы запускаем Redis-сервер с указанным файлом конфигурации и файлом ACL.
 # Это можно положить всё в конфиг и примонтировать.
+## -1------------------------------------------------------------------------------------------
+#  Приложение spring boot не подключилось, ошибка "NOPERM No permissions to access a channel":
 #    При запуске приложения spring boot , оно не смогло сконнектиться с Редис. Нашел решение:
 #    aws elasticache modify-user --region $REGION --user-id $USER_ID --access-string "on ~* -@all +@read +@write +cluster|nodes"
 #    но оно не помогло. Нужно еще поискать в интернете.
 #    Было так:
 #    echo "user default on nopass ~* +@all" > /usr/local/etc/redis/users.acl &&
 #    echo "user $REDIS_USER on >$REDIS_USER_PASSWORD ~* +@all" >> /usr/local/etc/redis/users.acl &&
+#
+## -2------------------------------------------------------------------------------------------
+#  Приложение spring boot не подключилось, ошибка "NOPERM No permissions to access a channel":
+#    mkdir -p /usr/local/etc/redis &&
+    #        echo "bind 0.0.0.0" > /usr/local/etc/redis/redis.conf &&
+    #        echo "requirepass $REDIS_PASSWORD" >> /usr/local/etc/redis/redis.conf &&
+    #        echo "appendonly yes" >> /usr/local/etc/redis/redis.conf &&
+    #        echo "appendfsync everysec" >> /usr/local/etc/redis/redis.conf &&
+    #        echo "user default on nopass ~* +@all +@read +@write +cluster|nodes" > /usr/local/etc/redis/users.acl &&
+    #        echo "user $REDIS_USER on >$REDIS_USER_PASSWORD ~* +@all +@read +@write +cluster|nodes" >> /usr/local/etc/redis/users.acl &&
+    #        redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl
+## -3------------------------------------------------------------------------------------------
+#  Приложение spring boot не подключилось, ошибка "NOPERM No permissions to access a channel":
+#    mkdir -p /usr/local/etc/redis &&
+    #        echo "bind 0.0.0.0" > /usr/local/etc/redis/redis.conf &&
+    #        echo "requirepass $REDIS_PASSWORD" >> /usr/local/etc/redis/redis.conf &&
+    #        echo "appendonly yes" >> /usr/local/etc/redis/redis.conf &&
+    #        echo "appendfsync everysec" >> /usr/local/etc/redis/redis.conf &&
+    #        echo "user default on >my_redis_password ~* +@all +@read +@write +cluster|nodes" > /usr/local/etc/redis/users.acl &&
+    #        echo "user $REDIS_USER on >$REDIS_USER_PASSWORD ~* +@all +@read +@write +cluster|nodes" >> /usr/local/etc/redis/users.acl &&
+    #        redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl
+## -4------------------------------------------------------------------------------------------
+#    Так вообще не запустился контейнер:
+#            mkdir -p /usr/local/etc/redis &&
+    #        echo "bind 0.0.0.0" > /usr/local/etc/redis/redis.conf &&
+    #        echo "appendonly yes" >> /usr/local/etc/redis/redis.conf &&
+    #        echo "appendfsync everysec" >> /usr/local/etc/redis/redis.conf &&
+    #        echo "logfile /var/log/redis/redis.log" >> /usr/local/etc/redis/redis.conf &&
+    #        echo "user default off" > /usr/local/etc/redis/users.acl &&
+    #        echo "user my_user on >my_user_password ~* +@all +@pubsub" >> /usr/local/etc/redis/users.acl &&
+    #        redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl &&
+    #        echo "Redis started successfully" || echo "Redis failed to start"
+## -5------------------------------------------------------------------------------------------
+# Redis запущен без user.acl, на дефолтных настройках, потому что с настройкой других
+# пользователей не получилось справиться, при запуске spring boot приложения работающего с Redis
+# получал ошибку: NOPERM No permissions to access a channel
     command: >
       sh -c '
         mkdir -p /usr/local/etc/redis &&
@@ -57,12 +95,11 @@ services:
         echo "requirepass $REDIS_PASSWORD" >> /usr/local/etc/redis/redis.conf &&
         echo "appendonly yes" >> /usr/local/etc/redis/redis.conf &&
         echo "appendfsync everysec" >> /usr/local/etc/redis/redis.conf &&
-        echo "user default on nopass ~* +@all +@read +@write +cluster|nodes" > /usr/local/etc/redis/users.acl &&
-        echo "user $REDIS_USER on >$REDIS_USER_PASSWORD ~* +@all +@read +@write +cluster|nodes" >> /usr/local/etc/redis/users.acl &&
-        redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl
+        redis-server /usr/local/etc/redis/redis.conf
       '
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "$REDIS_PASSWORD", "ping"]
+#      test: ["CMD", "redis-cli", "-u", "redis://my_user:my_user_password@localhost:6379", "ping"]
       interval: 30s
       timeout: 10s
       retries: 5
