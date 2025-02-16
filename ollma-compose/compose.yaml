@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+#    Гарантирует, что контейнер перезапускается (restart: unless-stopped).
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+#   Использует том ollama_data для хранения данных в /root/.ollama, чтобы сохранить загруженные модели между запусками.
+#   Нужно выбрать один способ (я выбрал каталог проекта для хранения данных, поэтому инструкция volumes закомментирована):
+      - ./ollama_data:/root/.ollama # для сохранения в volume в папке в этом проекте на компьютере
+#      - ollama_data:/root/.ollama # для сохранения в volume где-то на компьютере
+    networks:
+      - ollama-net
+
+#volumes:
+#  ollama_data:
+
+networks:
+  ollama-net:
+    name: ollama-net
+    driver: bridge
