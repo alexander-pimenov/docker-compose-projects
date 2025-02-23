@@ -74,6 +74,7 @@ volumes:
 
 networks:
   mongo-net:
+    name: mongo-net
     driver: bridge
 
   
