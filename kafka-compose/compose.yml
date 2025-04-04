@@ -1,0 +1,94 @@
+
+services:
+  #  ---------- Zookeeper ----------
+  zookeeper:
+    image: docker.io/confluentinc/cp-zookeeper:7.0.1
+    container_name: zookeeper
+    restart: on-failure
+    #    restart: unless-stopped
+    mem_limit: 300m
+    environment:
+      KAFKA_OPTS: >
+        -Dzookeeper.extendedTypesEnabled=true
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+      ZOOKEEPER_ADMIN_SERVER_PORT: 8191
+    healthcheck:
+      test: [ "CMD", "curl", "-fsSL", "http://zookeeper:8191/commands/ruok" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    ports:
+      - 22181:2181
+    networks:
+      - kafka-net
+
+  #  ---------- Kafka ----------
+  kafka:
+    image: docker.io/confluentinc/cp-kafka:7.2.0
+    container_name: kafka
+    restart: on-failure
+    mem_limit: 1.5G
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092
+      #      KAFKA_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://kafka:29092 ##так в СБТ
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      ZOOKEEPER_AUTOPURGE_PURGE_INTERVAL: "0"
+      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+      KAFKA_ZOOKEEPER_SESSION_TIMEOUT: "40000"
+    healthcheck:
+      #      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:29092", "--list"]
+      #      test: ["CMD", "nc", "-vz", "kakfa", "9092"]
+      test: [ "CMD-SHELL", "echo 'test-message' | kafka-console-producer --broker-list kafka:9092 --topic health-check-topic && kafka-console-consumer --bootstrap-server kafka:9092 --topic health-check-topic --from-beginning --max-messages 1 | grep 'test-message'" ]
+      interval: 10s
+      timeout: 30s
+      retries: 10
+    ports:
+      - 29092:9092
+    networks:
+      - kafka-net
+
+  #  ---------- Kafka-UI ----------
+  kafka-ui:
+    image: docker.io/provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    restart: on-failure
+    mem_limit: 400m
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      #      KAFKA_CLUSTERS_0_BOOTSTRAP_SERVERS: localhost:29092
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      KAFKA_CLUSTER_0_JMXPORT: 9997
+      DYNAMIC_CONFIG_ENABLED: "true"
+    #      KAFKA_CLUSTERS_0_SCHEMA_REGISTRY: http://localhost:8081
+    #      KAFKA_CLUSTERS_0_SCHEMA_REGISTRY_USERNAME: user
+    #      KAFKA_CLUSTERS_0_SCHEMA_REGISTRY_PASSWORD: password
+    #      KAFKA_CLUSTERS_0_SECURITY_PROTOCOL: PLAINTEXT
+    #      KAFKA_CLUSTERS_0_SCHEMA_REGISTRY_SECURITY_PROTOCOL: PLAINTEXT
+    #      KAFKA_CLUSTERS_0_ZOOKEEPER_SECURITY_PROTOCOL: PLAINTEXT
+#    так можно запускать, например, на другом порту и с кастомными параметрами, т.к. кафка это Java приложение.
+#    env_file:
+#      - ./kafka-ui/JAVA_OPTS
+    ports:
+      - 8078:8080
+    networks:
+      - kafka-net
+
+networks:
+  kafka-net:
+    name: kafka-net
+    driver: bridge
