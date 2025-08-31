@@ -10,12 +10,15 @@
 
 services:
   redis:
-    image: redis:latest
+    image: docker.io/redis:latest
     container_name: redis
     restart: unless-stopped
     environment:
+#  Пароль для Redis (имя пользователя по умолчанию - default)
       - REDIS_PASSWORD=${REDIS_PASSWORD}
+#  Имя нового пользователя
       - REDIS_USER=${REDIS_USER}
+#  Пароль для нового пользователя.
       - REDIS_USER_PASSWORD=${REDIS_USER_PASSWORD}
     ports:
       - "6380:6379"
@@ -109,8 +112,19 @@ services:
     networks:
       - redis-net
 
+  redis-insight:
+    image: docker.io/redis/redisinsight:latest
+    container_name: redis-insight
+    restart: always
+    ports:
+      - "5540:5540"
+    volumes:
+      - ./redisinsightdata:/data
+#      - redis-insight:/data
+
 volumes:
   redis-data:
+  redis-insight:
 
 networks:
   redis-net:
