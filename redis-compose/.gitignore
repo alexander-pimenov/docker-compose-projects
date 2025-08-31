@@ -83,9 +83,12 @@ bin/
 ### Не передавать содержимое каталога redisdata (данные работы Redis сервера) ###
 # Игнорировать все содержимое каталога redisdata
 redisdata/*
+redisinsight_db/*
 
 # Но не игнорировать сам каталог
 !redisdata/
+!redisinsight_db/
 
 # Исключить скрытые файлы (если необходимо)
 redisdata/.*
+redisinsight_db/.*

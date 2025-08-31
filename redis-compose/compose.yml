@@ -11,6 +11,7 @@
 services:
   redis:
     image: docker.io/redis:latest
+#    image: docker.io/redis/redis-stack-server:latest
     container_name: redis
     restart: unless-stopped
     environment:
@@ -21,14 +22,15 @@ services:
 #  Пароль для нового пользователя.
       - REDIS_USER_PASSWORD=${REDIS_USER_PASSWORD}
     ports:
-      - "6380:6379"
+      - "6379:6379"
+#      - "6380:6379"
     volumes:
     # Хранение данных Redis в локальной директории ./redisdata. Таким образом, ваши данные будут сохраняться в 
     # локальной папке, и вы не потеряете их, даже если контейнер Redis случайно удалится или вы потеряете к нему доступ. 
     # Главное — обеспечить сохранность данных из папки redisdata.
     # Или использовать инструкцию volumes и тогда ваши данные будут сохраняться где-то в системе.
-      - ./redisdata:/data
-      # - redis-data:/data
+      - ./redisdata:/data # Optional: for data persistence
+      # - redis_data:/data
     deploy:
     #  Ограничения и резервирование ресурсов:
       resources:
@@ -114,17 +116,23 @@ services:
 
   redis-insight:
     image: docker.io/redis/redisinsight:latest
+#    image: docker.io/redislabs/redisinsight:latest
     container_name: redis-insight
     restart: always
     ports:
+#      - "8001:8001"
       - "5540:5540"
     volumes:
-      - ./redisinsightdata:/data
-#      - redis-insight:/data
+      - ./redisinsight_db:/data  # For RedisInsight's configuration and data
+#      - redisinsight_db:/data
+    depends_on:
+      - redis # Ensures Redis starts before RedisInsight
+    networks:
+      - redis-net
 
 volumes:
-  redis-data:
-  redis-insight:
+  redis_data:
+  redisinsight_db:
 
 networks:
   redis-net:
