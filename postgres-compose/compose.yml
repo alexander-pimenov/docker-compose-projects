@@ -72,7 +72,29 @@ services:
           cpus: '1'
           memory: 4G
     networks:
-      - postgres  
+      - postgres
+
+  # С помощью второго контейнера можно настроить еще базу данных, влить данные и т.д.
+  # Но это не обязательно. Лучше использовать скрипты передавая их в docker-entrypoint-initdb.d
+  postgres-init:
+    container_name: postgres-init
+    image: docker.io/postgres:${POSTGRES_VERSION}
+    auto_remove: true
+    restart: no
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "
+      until pg_isready -h localhost -U postgres -p 5432; do
+      echo 'Waiting for postgres...'
+      sleep 2
+      done
+      psql -v ON_ERROR_STOP=1 -h localhost -p 5432 -U postgres -d postgres -c 'CREATE DATABASE dictionary;'
+      echo 'Database dictionary created successfully'
+      "
+    networks:
+      - postgres
 
   # pgadmin:
   #   # pgAdmin стартует на порту 5050
