@@ -43,16 +43,16 @@ services:
       KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
       KAFKA_ZOOKEEPER_SESSION_TIMEOUT: "40000"
       #      С такой конфигурацией не работал ,т.е. не подключался к кафке ни продюсер ни консьюмер:
-#      KAFKA_LISTENERS: INSIDE://0.0.0.0:9092,OUTSIDE://0.0.0.0:29092
-#      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-#      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:9092,OUTSIDE://localhost:29092
-#      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
-#      С такой конфигурацией заработал и продюсер и консюмер:
+      #      KAFKA_LISTENERS: INSIDE://0.0.0.0:9092,OUTSIDE://0.0.0.0:29092
+      #      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      #      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:9092,OUTSIDE://localhost:29092
+      #      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      #      С такой конфигурацией заработал и продюсер и консюмер:
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_HOST://kafka:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-#      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+      #      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
@@ -99,19 +99,19 @@ services:
       - kafka-postgres-redis-net
 
   ##  ---------- Еще один Kafka-UI, но, как по мне, он хуже, чем верхний ---------- ##
-#  kafdrop:
-#    image: docker.io/obsidiandynamics/kafdrop:latest
-#    container_name: kafdrop
-#    depends_on:
-#      kafka:
-#        condition: service_healthy
-#    ports:
-#      - 9000:9000
-#    environment:
-#      KAFKA_BROKERCONNECT: kafka:29092
-#      JVM_OPTS: "-Xms32M -Xmx64M"
-#    networks:
-#      - kafka-postgres-redis-net
+  #  kafdrop:
+  #    image: docker.io/obsidiandynamics/kafdrop:latest
+  #    container_name: kafdrop
+  #    depends_on:
+  #      kafka:
+  #        condition: service_healthy
+  #    ports:
+  #      - 9000:9000
+  #    environment:
+  #      KAFKA_BROKERCONNECT: kafka:29092
+  #      JVM_OPTS: "-Xms32M -Xmx64M"
+  #    networks:
+  #      - kafka-postgres-redis-net
 
   ## --------------------------------- Postgres --------------------------------- ##
   postgres-db:
@@ -161,6 +161,34 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
+    networks:
+      - kafka-postgres-redis-net
+
+  # RedisInsight - официальный UI
+  redis-insight:
+    image: docker.io/redis/redisinsight:latest
+    container_name: redis-insight
+    ports:
+      - 5540:5540
+    volumes:
+      - redis_insight_data:/db
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - kafka-postgres-redis-net
+
+  # Redis Commander - альтернатива (легковесный)
+  redis-commander:
+    image: docker.io/rediscommander/redis-commander:latest
+    container_name: redis-commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - 8081:8081
+    depends_on:
+      redis:
+        condition: service_healthy
     networks:
       - kafka-postgres-redis-net
 
@@ -236,3 +264,5 @@ volumes:
     name: kafka_data # Для Kafka рекомендую named volume
   redis_data:
     name: redis_data # Для Redis рекомендую named volume
+  redis_insight_data:
+    name: redis_insight_data
