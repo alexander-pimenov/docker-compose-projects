@@ -1,0 +1,32 @@
+version: '3'
+services:
+  # Rabbit service. See https://hub.docker.com/_/rabbitmq/
+  rabbit:
+    container_name: dev_rabbit
+    hostname: rabbit
+    #    image: rabbitmq:3.6.6-management
+    image: docker.io/rabbitmq:3.9-alpine
+    environment:
+      - RABBITMQ_DEFAULT_USER=user
+      - RABBITMQ_DEFAULT_PASS=user
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - type: bind
+        source: ./rabbitmq-enabled-plugins
+        target: /etc/rabbitmq/enabled_plugins
+      - type: bind
+        source: ./rabbitmq.config
+        target: /etc/rabbitmq/rabbitmq.config
+      - type: bind
+        source: ./rabbitmq-defs.json
+        target: /etc/rabbitmq/rabbitmq-defs.json
+    networks:
+      - rabbitmq_go_net
+
+
+networks:
+  rabbitmq_go_net:
+    name: rabbitmq_go_net
+    driver: bridge
